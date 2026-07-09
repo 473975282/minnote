@@ -18,6 +18,7 @@ struct NoteEditorView: View {
     @State private var editorFocusToken = 0
     @State private var previewText = ""
     @State private var isPlaceholderVisible = true
+    @State private var editorMoreMenuPresented = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -143,18 +144,19 @@ struct NoteEditorView: View {
             .buttonStyle(IconButtonStyle())
             .help("新建笔记")
 
-            Menu {
-                Button(role: .destructive) {
-                    store.deleteSelectedNote()
-                } label: {
-                    Label("删除当前笔记", systemImage: "trash")
-                }
-                .disabled(note == nil)
+            Button {
+                editorMoreMenuPresented.toggle()
             } label: {
-                IconButtonLabel(systemName: "ellipsis")
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 13, weight: .semibold))
             }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
+            .buttonStyle(IconButtonStyle())
+            .popover(isPresented: $editorMoreMenuPresented, arrowEdge: .top) {
+                EditorMoreMenuPopover(canDeleteNote: note != nil) {
+                    store.deleteSelectedNote()
+                    editorMoreMenuPresented = false
+                }
+            }
             .help("更多")
         }
         .padding(.horizontal, 18)
@@ -701,6 +703,37 @@ struct NoteEditorView: View {
 
     private var isMarkdownMode: Bool {
         settings.noteFormat == .markdown || note?.format == .markdown
+    }
+}
+
+private struct EditorMoreMenuPopover: View {
+    let canDeleteNote: Bool
+    let onDeleteNote: () -> Void
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Button(role: .destructive) {
+                onDeleteNote()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12.5, weight: .regular))
+
+                    Text("删除当前笔记")
+                        .font(.system(size: 12.5, weight: .medium))
+
+                    Spacer(minLength: 0)
+                }
+                .foregroundStyle(canDeleteNote ? Color.red : Color.secondary)
+                .padding(.horizontal, 10)
+                .frame(height: 30)
+                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canDeleteNote)
+        }
+        .padding(6)
+        .frame(width: 158)
     }
 }
 

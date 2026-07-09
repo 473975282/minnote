@@ -8,17 +8,6 @@ struct IconButtonStyle: ButtonStyle {
     }
 }
 
-struct IconButtonLabel: View {
-    let systemName: String
-
-    var body: some View {
-        IconButtonChrome(isPressed: false) {
-            Image(systemName: systemName)
-                .font(.system(size: 13, weight: .semibold))
-        }
-    }
-}
-
 private struct IconButtonChrome<Label: View>: View {
     let isPressed: Bool
     private let label: Label
