@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var selectedTag: NoteTag?
     @State private var sidebarMode: SidebarMode = .notes
     @State private var outlineNavigationTarget: NoteOutlineNavigationTarget?
+    @State private var editorSelectionLocation = 0
     @AppStorage("sidebarCollapsed") private var sidebarCollapsed = true
 
     private var filteredNotes: [PlainNote] {
@@ -46,7 +47,28 @@ struct ContentView: View {
         store.selectedNote?.outlineItems ?? []
     }
 
+    private var activeOutlineItemID: String? {
+        selectedOutlineItems
+            .last { $0.location <= editorSelectionLocation }?
+            .id
+    }
+
     var body: some View {
+        HStack(spacing: 0) {
+            if !sidebarCollapsed {
+                SidebarView(
+                    store: store,
+                    settings: settings,
+                    notes: filteredNotes,
+                    selectedNote: store.selectedNote,
+                    outlineItems: selectedOutlineItems,
+                    activeOutlineItemID: activeOutlineItemID,
+                    mode: $sidebarMode,
+                    searchText: $searchText,
+                    selectedTag: $selectedTag,
+                    onOpenStorageLocation: onOpenStorageLocation
+                ) { item in
+                    outlineNavigationTarget = NoteOutlineNavigationTarget(location: item.location)
         ZStack {
             windowBackground
                 .ignoresSafeArea(.container, edges: .top)
@@ -84,6 +106,16 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea(.container, edges: .top)
 
+            NoteEditorView(
+                store: store,
+                settings: settings,
+                note: store.selectedNote,
+                sidebarCollapsed: sidebarCollapsedBinding,
+                outlineNavigationTarget: outlineNavigationTarget,
+                onSelectionLocationChange: { location in
+                    editorSelectionLocation = location
+                }
+            )
             WindowTrafficLightControls()
                 .padding(.leading, 18)
                 .padding(.top, 14)
@@ -95,6 +127,9 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
             setSidebarCollapsed(!sidebarCollapsed)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .toggleSidebarMode)) { _ in
+            toggleSidebarMode()
         }
         .onChange(of: selectedTag) { _, _ in
             selectFirstVisibleNoteIfNeeded()
@@ -113,6 +148,7 @@ struct ContentView: View {
         }
         .onChange(of: store.selectedNoteID) { _, _ in
             outlineNavigationTarget = nil
+            editorSelectionLocation = 0
         }
         .frame(
             minWidth: 220,
@@ -228,6 +264,16 @@ struct ContentView: View {
         withTransaction(transaction) {
             sidebarCollapsed = collapsed
         }
+    }
+
+    private func toggleSidebarMode() {
+        if sidebarCollapsed {
+            setSidebarCollapsed(false)
+            sidebarMode = .outline
+            return
+        }
+
+        sidebarMode = sidebarMode.toggled
     }
 
     private func selectFirstVisibleNoteIfNeeded() {
