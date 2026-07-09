@@ -245,34 +245,6 @@ struct NoteEditorView: View {
     }
 
     @ViewBuilder
-    private var capsuleChromeBackground: some View {
-        if settings.visualTheme == .transparent {
-            TransparentLiquidBackground(
-                material: .popover,
-                tint: colorScheme == .light
-                    ? Color.white.opacity(0.058)
-                    : Color.black.opacity(0.110),
-                sheen: colorScheme == .light
-                    ? Color.white.opacity(0.30)
-                    : Color.white.opacity(0.080),
-                reflection: colorScheme == .light
-                    ? MinNoteTheme.glassCoolHighlight.opacity(0.050)
-                    : Color.white.opacity(0.018),
-                topGlow: colorScheme == .light
-                    ? Color.white.opacity(0.20)
-                    : Color.white.opacity(0.060)
-            )
-            .clipShape(Capsule())
-        } else if colorScheme == .light {
-            Capsule()
-                .fill(MinNoteTheme.pillSurface.opacity(0.95))
-        } else {
-            Capsule()
-                .fill(.regularMaterial)
-        }
-    }
-
-    @ViewBuilder
     private var toolbarChromeBackground: some View {
         if settings.visualTheme == .transparent {
             TransparentLiquidBackground(
@@ -301,23 +273,17 @@ struct NoteEditorView: View {
     }
 
     private var chromeBorderColor: Color {
-        if settings.visualTheme == .transparent {
-            colorScheme == .light
-                ? Color.white.opacity(0.38)
-                : Color.white.opacity(0.13)
-        } else {
-            Color.primary.opacity(0.08)
-        }
+        FloatingChromeStyle.borderColor(
+            visualTheme: settings.visualTheme,
+            colorScheme: colorScheme
+        )
     }
 
     private var chromeShadowColor: Color {
-        if settings.visualTheme == .transparent {
-            colorScheme == .light
-                ? Color.black.opacity(0.045)
-                : Color.black.opacity(0.16)
-        } else {
-            Color.black.opacity(0.08)
-        }
+        FloatingChromeStyle.shadowColor(
+            visualTheme: settings.visualTheme,
+            colorScheme: colorScheme
+        )
     }
 
     @ViewBuilder
@@ -429,14 +395,10 @@ struct NoteEditorView: View {
             }
             .padding(.horizontal, 10)
             .frame(height: FloatingChromeMetrics.pillHeight)
-            .background {
-                capsuleChromeBackground
-            }
-            .overlay {
-                Capsule()
-                    .stroke(chromeBorderColor, lineWidth: 1)
-            }
-            .shadow(color: chromeShadowColor, radius: 8, y: 3)
+            .floatingCapsuleChrome(
+                visualTheme: settings.visualTheme,
+                colorScheme: colorScheme
+            )
         }
         .buttonStyle(.plain)
         .disabled(note == nil)
@@ -472,14 +434,10 @@ struct NoteEditorView: View {
             .lineLimit(1)
             .padding(.horizontal, 10)
             .frame(height: FloatingChromeMetrics.pillHeight)
-            .background {
-                capsuleChromeBackground
-            }
-            .overlay {
-                Capsule()
-                    .stroke(chromeBorderColor, lineWidth: 1)
-            }
-            .shadow(color: chromeShadowColor, radius: 8, y: 3)
+            .floatingCapsuleChrome(
+                visualTheme: settings.visualTheme,
+                colorScheme: colorScheme
+            )
     }
 
     @ViewBuilder
@@ -502,14 +460,10 @@ struct NoteEditorView: View {
             }
             .padding(.horizontal, 10)
             .frame(height: FloatingChromeMetrics.pillHeight)
-            .background {
-                capsuleChromeBackground
-            }
-            .overlay {
-                Capsule()
-                    .stroke(chromeBorderColor, lineWidth: 1)
-            }
-            .shadow(color: chromeShadowColor, radius: 8, y: 3)
+            .floatingCapsuleChrome(
+                visualTheme: settings.visualTheme,
+                colorScheme: colorScheme
+            )
             .allowsHitTesting(false)
         }
     }

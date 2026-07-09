@@ -255,21 +255,11 @@ struct SidebarView: View {
             .font(.system(size: 11, weight: .medium))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background {
-                if colorScheme == .light {
-                    Capsule()
-                        .fill(MinNoteTheme.pillSurface.opacity(0.95))
-                } else {
-                    Capsule()
-                        .fill(.regularMaterial)
-                }
-            }
-            .overlay {
-                Capsule()
-                    .stroke(.primary.opacity(0.08), lineWidth: 1)
-            }
-            .shadow(color: .black.opacity(0.07), radius: 7, y: 3)
+            .frame(height: 28)
+            .floatingCapsuleChrome(
+                visualTheme: settings.visualTheme,
+                colorScheme: colorScheme
+            )
     }
 }
 
