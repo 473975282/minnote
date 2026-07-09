@@ -21,36 +21,12 @@ struct NoteEditorView: View {
     @State private var editorMoreMenuPresented = false
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            VStack(spacing: 0) {
-                header
+        VStack(spacing: 0) {
+            header
 
-                editorBody
-            }
-
-            if editorMoreMenuPresented {
-                Color.clear
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        editorMoreMenuPresented = false
-                    }
-                    .zIndex(1)
-
-                EditorMoreMenuCapsule(
-                    visualTheme: settings.visualTheme,
-                    canDeleteNote: note != nil
-                ) {
-                    store.deleteSelectedNote()
-                    editorMoreMenuPresented = false
-                }
-                .padding(.top, 52)
-                .padding(.trailing, 18)
-                .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .topTrailing)))
-                .zIndex(2)
-            }
+            editorBody
         }
         .background(editorBackground)
-        .animation(.easeOut(duration: 0.12), value: editorMoreMenuPresented)
         .onAppear {
             syncEditorSnapshotFromStore()
             focusEditor()
@@ -156,7 +132,7 @@ struct NoteEditorView: View {
                 Image(systemName: sidebarCollapsed ? "sidebar.leading" : "sidebar.left")
                     .font(.system(size: 13, weight: .semibold))
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(IconButtonStyle(buttonStyle: settings.buttonStyle, visualTheme: settings.visualTheme))
             .help(sidebarCollapsed ? "显示列表" : "收起列表")
 
             Button {
@@ -165,7 +141,7 @@ struct NoteEditorView: View {
                 Image(systemName: "square.and.pencil")
                     .font(.system(size: 13, weight: .semibold))
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(IconButtonStyle(buttonStyle: settings.buttonStyle, visualTheme: settings.visualTheme))
             .help("新建笔记")
 
             Button {
@@ -174,7 +150,13 @@ struct NoteEditorView: View {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 13, weight: .semibold))
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(IconButtonStyle(buttonStyle: settings.buttonStyle, visualTheme: settings.visualTheme))
+            .popover(isPresented: $editorMoreMenuPresented, arrowEdge: .top) {
+                EditorMoreMenuPopover(canDeleteNote: note != nil) {
+                    store.deleteSelectedNote()
+                    editorMoreMenuPresented = false
+                }
+            }
             .help("更多")
         }
         .padding(.horizontal, 18)
@@ -724,57 +706,34 @@ struct NoteEditorView: View {
     }
 }
 
-private struct EditorMoreMenuCapsule: View {
-    let visualTheme: AppVisualTheme
+private struct EditorMoreMenuPopover: View {
     let canDeleteNote: Bool
     let onDeleteNote: () -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
-        Button(role: .destructive) {
-            onDeleteNote()
-        } label: {
-            HStack(spacing: 9) {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .regular))
+        VStack(spacing: 4) {
+            Button(role: .destructive) {
+                onDeleteNote()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12.5, weight: .regular))
 
-                Text("删除当前笔记")
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
+                    Text("删除当前笔记")
+                        .font(.system(size: 12.5, weight: .medium))
+
+                    Spacer(minLength: 0)
+                }
+                .foregroundStyle(canDeleteNote ? Color.red : Color.secondary)
+                .padding(.horizontal, 10)
+                .frame(height: 30)
+                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
             }
-            .foregroundStyle(canDeleteNote ? Color.red : Color.secondary)
-            .padding(.horizontal, 20)
-            .frame(height: 44)
-            .background {
-                FloatingChromeStyle.capsuleBackground(
-                    visualTheme: visualTheme,
-                    colorScheme: colorScheme
-                )
-            }
-            .overlay {
-                Capsule()
-                    .stroke(
-                        FloatingChromeStyle.borderColor(
-                            visualTheme: visualTheme,
-                            colorScheme: colorScheme
-                        ),
-                        lineWidth: 1
-                    )
-            }
-            .shadow(
-                color: FloatingChromeStyle.shadowColor(
-                    visualTheme: visualTheme,
-                    colorScheme: colorScheme
-                ),
-                radius: 16,
-                x: 0,
-                y: 8
-            )
-            .contentShape(Capsule())
+            .buttonStyle(.plain)
+            .disabled(!canDeleteNote)
         }
-        .buttonStyle(.plain)
-        .disabled(!canDeleteNote)
+        .padding(6)
+        .frame(width: 158)
     }
 }
 

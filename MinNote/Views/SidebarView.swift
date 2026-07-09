@@ -198,7 +198,7 @@ struct SidebarView: View {
                 Image(systemName: mode.toggled.systemImage)
                     .font(.system(size: 13, weight: .semibold))
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(IconButtonStyle(buttonStyle: settings.buttonStyle, visualTheme: settings.visualTheme))
         }
     }
 
@@ -282,7 +282,7 @@ struct SidebarView: View {
                 Image(systemName: "folder")
                     .font(.system(size: 12, weight: .semibold))
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(IconButtonStyle(buttonStyle: settings.buttonStyle, visualTheme: settings.visualTheme))
             .help("打开存储位置")
 
             Button {
@@ -291,7 +291,7 @@ struct SidebarView: View {
                 Image(systemName: "gearshape")
                     .font(.system(size: 12, weight: .semibold))
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(IconButtonStyle(buttonStyle: settings.buttonStyle, visualTheme: settings.visualTheme))
             .help("设置")
         }
     }
@@ -314,7 +314,7 @@ struct SidebarView: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .semibold))
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(IconButtonStyle(buttonStyle: settings.buttonStyle, visualTheme: settings.visualTheme))
             .disabled(h1ItemsWithChildren.isEmpty)
             .help("全部收起")
 
@@ -324,7 +324,7 @@ struct SidebarView: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11, weight: .semibold))
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(IconButtonStyle(buttonStyle: settings.buttonStyle, visualTheme: settings.visualTheme))
             .disabled(collapsedH1IDs.isEmpty)
             .help("全部展开")
         }
