@@ -84,6 +84,15 @@ enum FloatingChromeStyle {
                     : Color.white.opacity(0.060)
             )
             .clipShape(Capsule())
+        } else if visualTheme == .glass {
+            if #available(macOS 26.0, *) {
+                Capsule()
+                    .fill(.clear)
+                    .glassEffect(.regular, in: Capsule())
+            } else {
+                Capsule()
+                    .fill(.regularMaterial)
+            }
         } else if colorScheme == .light {
             Capsule()
                 .fill(MinNoteTheme.pillSurface.opacity(0.95))
@@ -135,22 +144,26 @@ private struct FloatingCapsuleChromeModifier: ViewModifier {
                 )
             }
             .overlay {
-                Capsule()
-                    .stroke(
-                        FloatingChromeStyle.borderColor(
-                            visualTheme: visualTheme,
-                            colorScheme: colorScheme
-                        ),
-                        lineWidth: 1
-                    )
+                if visualTheme != .glass {
+                    Capsule()
+                        .stroke(
+                            FloatingChromeStyle.borderColor(
+                                visualTheme: visualTheme,
+                                colorScheme: colorScheme
+                            ),
+                            lineWidth: 1
+                        )
+                }
             }
             .shadow(
-                color: FloatingChromeStyle.shadowColor(
-                    visualTheme: visualTheme,
-                    colorScheme: colorScheme
-                ),
-                radius: shadowRadius,
-                y: shadowY
+                color: visualTheme == .glass
+                    ? .clear
+                    : FloatingChromeStyle.shadowColor(
+                        visualTheme: visualTheme,
+                        colorScheme: colorScheme
+                    ),
+                radius: visualTheme == .glass ? 0 : shadowRadius,
+                y: visualTheme == .glass ? 0 : shadowY
             )
     }
 }

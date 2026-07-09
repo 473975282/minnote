@@ -14,6 +14,12 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var sidebarModeHotKey: HotKeyConfiguration {
+        didSet {
+            saveSidebarModeHotKey()
+        }
+    }
+
     @Published var markdownPreviewHotKey: HotKeyConfiguration {
         didSet {
             saveMarkdownPreviewHotKey()
@@ -89,6 +95,13 @@ final class AppSettings: ObservableObject {
     @Published var visualTheme: AppVisualTheme {
         didSet {
             saveVisualTheme()
+            applyDefaultButtonStyleForTheme()
+        }
+    }
+
+    @Published var buttonStyle: AppButtonStyle {
+        didSet {
+            saveButtonStyle()
         }
     }
 
@@ -117,10 +130,13 @@ final class AppSettings: ObservableObject {
     }
 
     private let userDefaults: UserDefaults
+    private var isApplyingThemeButtonStyleDefault = false
     private let keyCodeKey = "hotKey.keyCode"
     private let modifiersKey = "hotKey.modifiers"
     private let sidebarKeyCodeKey = "sidebarHotKey.keyCode"
     private let sidebarModifiersKey = "sidebarHotKey.modifiers"
+    private let sidebarModeKeyCodeKey = "sidebarModeHotKey.keyCode"
+    private let sidebarModeModifiersKey = "sidebarModeHotKey.modifiers"
     private let markdownPreviewKeyCodeKey = "markdownPreviewHotKey.keyCode"
     private let markdownPreviewModifiersKey = "markdownPreviewHotKey.modifiers"
     private let markdownToolbarKeyCodeKey = "markdownToolbarHotKey.keyCode"
@@ -141,6 +157,8 @@ final class AppSettings: ObservableObject {
     private let noteFormatKey = "note.format"
     private let appearanceKey = "appearance"
     private let visualThemeKey = "visualTheme"
+    private let buttonStyleKey = "buttonStyle"
+    private let buttonStyleCustomizedKey = "buttonStyle.customized"
     private let tagDisplayModeKey = "tagDisplayMode"
     private let markdownToolbarEnabledKey = "markdownToolbar.enabled"
     private let markdownToolbarPositionKey = "markdownToolbar.position"
@@ -170,6 +188,14 @@ final class AppSettings: ObservableObject {
             let keyCode = UInt32(userDefaults.integer(forKey: sidebarKeyCodeKey))
             let modifiers = UInt32(userDefaults.integer(forKey: sidebarModifiersKey))
             self.sidebarHotKey = HotKeyConfiguration(keyCode: keyCode, modifiers: modifiers)
+        }
+
+        if userDefaults.object(forKey: sidebarModeKeyCodeKey) == nil {
+            self.sidebarModeHotKey = .sidebarModeDefault
+        } else {
+            let keyCode = UInt32(userDefaults.integer(forKey: sidebarModeKeyCodeKey))
+            let modifiers = UInt32(userDefaults.integer(forKey: sidebarModeModifiersKey))
+            self.sidebarModeHotKey = HotKeyConfiguration(keyCode: keyCode, modifiers: modifiers)
         }
 
         if userDefaults.object(forKey: markdownPreviewKeyCodeKey) == nil {
@@ -266,11 +292,21 @@ final class AppSettings: ObservableObject {
             self.appearance = .system
         }
 
+        let resolvedVisualTheme: AppVisualTheme
         if let rawVisualTheme = userDefaults.string(forKey: visualThemeKey),
            let visualTheme = AppVisualTheme(rawValue: rawVisualTheme) {
-            self.visualTheme = visualTheme
+            resolvedVisualTheme = visualTheme
         } else {
-            self.visualTheme = .standard
+            resolvedVisualTheme = .standard
+        }
+        self.visualTheme = resolvedVisualTheme
+
+        if userDefaults.bool(forKey: buttonStyleCustomizedKey),
+           let rawButtonStyle = userDefaults.string(forKey: buttonStyleKey),
+           let buttonStyle = AppButtonStyle(rawValue: rawButtonStyle) {
+            self.buttonStyle = buttonStyle
+        } else {
+            self.buttonStyle = Self.defaultButtonStyle(for: resolvedVisualTheme)
         }
 
         if let rawTagDisplayMode = userDefaults.string(forKey: tagDisplayModeKey),
@@ -312,6 +348,10 @@ final class AppSettings: ObservableObject {
         sidebarHotKey = .sidebarDefault
     }
 
+    func resetSidebarModeHotKey() {
+        sidebarModeHotKey = .sidebarModeDefault
+    }
+
     func resetMarkdownPreviewHotKey() {
         markdownPreviewHotKey = .markdownPreviewDefault
     }
@@ -340,6 +380,11 @@ final class AppSettings: ObservableObject {
         deleteNoteHotKey = .deleteNoteDefault
     }
 
+    func resetButtonStyleForTheme() {
+        userDefaults.set(false, forKey: buttonStyleCustomizedKey)
+        applyDefaultButtonStyleForTheme()
+    }
+
     func markdownFormattingHotKey(for action: MarkdownFormattingAction) -> HotKeyConfiguration {
         markdownFormattingHotKeys[action] ?? .markdownDefault(for: action)
     }
@@ -365,6 +410,11 @@ final class AppSettings: ObservableObject {
     private func saveSidebarHotKey() {
         userDefaults.set(Int(sidebarHotKey.keyCode), forKey: sidebarKeyCodeKey)
         userDefaults.set(Int(sidebarHotKey.modifiers), forKey: sidebarModifiersKey)
+    }
+
+    private func saveSidebarModeHotKey() {
+        userDefaults.set(Int(sidebarModeHotKey.keyCode), forKey: sidebarModeKeyCodeKey)
+        userDefaults.set(Int(sidebarModeHotKey.modifiers), forKey: sidebarModeModifiersKey)
     }
 
     private func saveMarkdownPreviewHotKey() {
@@ -431,6 +481,13 @@ final class AppSettings: ObservableObject {
         userDefaults.set(visualTheme.rawValue, forKey: visualThemeKey)
     }
 
+    private func saveButtonStyle() {
+        userDefaults.set(buttonStyle.rawValue, forKey: buttonStyleKey)
+        if !isApplyingThemeButtonStyleDefault {
+            userDefaults.set(true, forKey: buttonStyleCustomizedKey)
+        }
+    }
+
     private func saveTagDisplayMode() {
         userDefaults.set(tagDisplayMode.rawValue, forKey: tagDisplayModeKey)
     }
@@ -452,6 +509,24 @@ final class AppSettings: ObservableObject {
         return appSupport
             .appendingPathComponent("MinNote", isDirectory: true)
             .appendingPathComponent("Notes", isDirectory: true)
+    }
+
+    private func applyDefaultButtonStyleForTheme() {
+        isApplyingThemeButtonStyleDefault = true
+        userDefaults.set(false, forKey: buttonStyleCustomizedKey)
+        buttonStyle = Self.defaultButtonStyle(for: visualTheme)
+        isApplyingThemeButtonStyleDefault = false
+    }
+
+    private static func defaultButtonStyle(for visualTheme: AppVisualTheme) -> AppButtonStyle {
+        switch visualTheme {
+        case .standard:
+            return .standard
+        case .glass:
+            return .glass
+        case .transparent:
+            return .transparent
+        }
     }
 
     private static func loadHotKey(

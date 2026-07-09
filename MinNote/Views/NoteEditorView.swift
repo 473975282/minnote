@@ -7,7 +7,7 @@ struct NoteEditorView: View {
     let note: PlainNote?
     @Binding var sidebarCollapsed: Bool
     let outlineNavigationTarget: NoteOutlineNavigationTarget?
-    let onOpenStorageLocation: () -> Void
+    let onSelectionLocationChange: (Int) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var markdownPreviewEnabled = false
@@ -18,6 +18,7 @@ struct NoteEditorView: View {
     @State private var editorFocusToken = 0
     @State private var previewText = ""
     @State private var isPlaceholderVisible = true
+    @State private var editorMoreMenuPresented = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -131,36 +132,48 @@ struct NoteEditorView: View {
                 Image(systemName: sidebarCollapsed ? "sidebar.leading" : "sidebar.left")
                     .font(.system(size: 13, weight: .semibold))
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(IconButtonStyle(buttonStyle: settings.buttonStyle, visualTheme: settings.visualTheme))
             .help(sidebarCollapsed ? "显示列表" : "收起列表")
-
-            Button {
-                onOpenStorageLocation()
-            } label: {
-                Image(systemName: "folder")
-                    .font(.system(size: 13, weight: .semibold))
-            }
-            .buttonStyle(IconButtonStyle())
-            .help("打开存储位置")
-
-            Button(role: .destructive) {
-                store.deleteSelectedNote()
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-            }
-            .buttonStyle(IconButtonStyle())
-            .disabled(note == nil)
-            .help("删除当前笔记")
 
             Button {
                 store.createNote()
             } label: {
-                Image(systemName: "plus")
+                Image(systemName: "square.and.pencil")
                     .font(.system(size: 13, weight: .semibold))
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(IconButtonStyle(buttonStyle: settings.buttonStyle, visualTheme: settings.visualTheme))
             .help("新建笔记")
+
+            ZStack {
+                Button {
+                    editorMoreMenuPresented.toggle()
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .buttonStyle(IconButtonStyle(buttonStyle: settings.buttonStyle, visualTheme: settings.visualTheme))
+                .help("更多")
+
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .allowsHitTesting(false)
+                    .popover(isPresented: $editorMoreMenuPresented, arrowEdge: .top) {
+                        EditorMoreMenuPopover(canDeleteNote: note != nil) {
+                            store.deleteSelectedNote()
+                            editorMoreMenuPresented = false
+                        }
+                    }
+            }
+            .frame(width: 28, height: 28)
+            .onChange(of: settings.visualTheme) { _, _ in
+                editorMoreMenuPresented = false
+            }
+            .onChange(of: settings.buttonStyle) { _, _ in
+                editorMoreMenuPresented = false
+            }
+            .onChange(of: colorScheme) { _, _ in
+                editorMoreMenuPresented = false
+            }
         }
         .padding(.leading, sidebarCollapsed ? 78 : 18)
         .padding(.trailing, 18)
@@ -261,6 +274,8 @@ struct NoteEditorView: View {
 
     @ViewBuilder
     private var toolbarChromeBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+
         if settings.visualTheme == .transparent {
             TransparentLiquidBackground(
                 material: .popover,
@@ -277,25 +292,42 @@ struct NoteEditorView: View {
                     ? Color.white.opacity(0.22)
                     : Color.white.opacity(0.065)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(shape)
+        } else if settings.visualTheme == .glass {
+            if #available(macOS 26.0, *) {
+                shape
+                    .fill(.clear)
+                    .glassEffect(.regular, in: shape)
+            } else {
+                shape
+                    .fill(.regularMaterial)
+            }
         } else if colorScheme == .light {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            shape
                 .fill(MinNoteTheme.pillSurface.opacity(0.95))
         } else {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            shape
                 .fill(.regularMaterial)
         }
     }
 
     private var chromeBorderColor: Color {
-        FloatingChromeStyle.borderColor(
+        guard settings.visualTheme != .glass else {
+            return .clear
+        }
+
+        return FloatingChromeStyle.borderColor(
             visualTheme: settings.visualTheme,
             colorScheme: colorScheme
         )
     }
 
     private var chromeShadowColor: Color {
-        FloatingChromeStyle.shadowColor(
+        guard settings.visualTheme != .glass else {
+            return .clear
+        }
+
+        return FloatingChromeStyle.shadowColor(
             visualTheme: settings.visualTheme,
             colorScheme: colorScheme
         )
@@ -375,12 +407,16 @@ struct NoteEditorView: View {
                     text: store.selectedText,
                     focusToken: editorFocusToken,
                     onTextChange: handleEditorTextChange,
-                    onPlaceholderVisibilityChange: handlePlaceholderVisibilityChange
-                ) { textView in
-                    if activeTextView !== textView {
-                        activeTextView = textView
+                    onPlaceholderVisibilityChange: handlePlaceholderVisibilityChange,
+                    onSelectionLocationChange: { location in
+                        onSelectionLocationChange(location)
+                    },
+                    onResolve: { textView in
+                        if activeTextView !== textView {
+                            activeTextView = textView
+                        }
                     }
-                }
+                )
 
                 if isPlaceholderVisible {
                     Text("写点什么...")
@@ -402,6 +438,10 @@ struct NoteEditorView: View {
             HStack(spacing: 6) {
                 Circle()
                     .fill(note?.tag?.color ?? Color.secondary.opacity(0.45))
+                    .overlay {
+                        Circle()
+                            .stroke(.white.opacity(0.22), lineWidth: 1)
+                    }
                     .frame(width: 7, height: 7)
 
                 Text(note?.tag?.title ?? "标签")
@@ -665,6 +705,7 @@ struct NoteEditorView: View {
         let lineRange = text.lineRange(for: NSRange(location: clampedLocation, length: 0))
         activeTextView.window?.makeFirstResponder(activeTextView)
         activeTextView.setSelectedRange(NSRange(location: lineRange.location, length: 0))
+        onSelectionLocationChange(lineRange.location)
         activeTextView.scrollRangeToVisible(lineRange)
     }
 
@@ -698,6 +739,37 @@ struct NoteEditorView: View {
 
     private var isMarkdownMode: Bool {
         settings.noteFormat == .markdown || note?.format == .markdown
+    }
+}
+
+private struct EditorMoreMenuPopover: View {
+    let canDeleteNote: Bool
+    let onDeleteNote: () -> Void
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Button(role: .destructive) {
+                onDeleteNote()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12.5, weight: .regular))
+
+                    Text("删除当前笔记")
+                        .font(.system(size: 12.5, weight: .medium))
+
+                    Spacer(minLength: 0)
+                }
+                .foregroundStyle(canDeleteNote ? Color.red : Color.secondary)
+                .padding(.horizontal, 10)
+                .frame(height: 30)
+                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canDeleteNote)
+        }
+        .padding(6)
+        .frame(width: 158)
     }
 }
 
@@ -744,6 +816,10 @@ private struct TagPickerRow: View {
             HStack(spacing: 9) {
                 Circle()
                     .fill(color)
+                    .overlay {
+                        Circle()
+                            .stroke(.white.opacity(0.22), lineWidth: 1)
+                    }
                     .frame(width: 10, height: 10)
 
                 Text(title)
@@ -831,6 +907,7 @@ private struct MarkdownTextEditor: NSViewRepresentable {
     let focusToken: Int
     let onTextChange: (String) -> Void
     let onPlaceholderVisibilityChange: (Bool) -> Void
+    let onSelectionLocationChange: (Int) -> Void
     let onResolve: (NSTextView) -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -878,6 +955,7 @@ private struct MarkdownTextEditor: NSViewRepresentable {
 
         DispatchQueue.main.async {
             onPlaceholderVisibilityChange(isPlaceholderVisible(for: textView))
+            onSelectionLocationChange(textView.selectedRange().location)
             onResolve(textView)
             textView.window?.makeFirstResponder(textView)
         }
@@ -901,6 +979,7 @@ private struct MarkdownTextEditor: NSViewRepresentable {
             textView.setSelectedRange(NSRange(location: (text as NSString).length, length: 0))
             context.coordinator.isApplyingRepresentedText = false
             onPlaceholderVisibilityChange(isPlaceholderVisible(for: textView))
+            onSelectionLocationChange(textView.selectedRange().location)
         }
 
         onResolve(textView)
@@ -968,6 +1047,7 @@ private struct MarkdownTextEditor: NSViewRepresentable {
             }
 
             parent.onPlaceholderVisibilityChange(parent.isPlaceholderVisible(for: textView))
+            parent.onSelectionLocationChange(textView.selectedRange().location)
         }
     }
 }

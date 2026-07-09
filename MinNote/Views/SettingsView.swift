@@ -113,6 +113,15 @@ struct SettingsView: View {
                     }
                 }
 
+                SettingsSegmentedRow(title: "按钮样式") {
+                    Picker("按钮样式", selection: $settings.buttonStyle) {
+                        ForEach(AppButtonStyle.allCases) { style in
+                            Text(style.title)
+                                .tag(style)
+                        }
+                    }
+                }
+
                 SettingsSegmentedRow(title: "模式") {
                     Picker("模式", selection: $settings.tagDisplayMode) {
                         ForEach(TagDisplayMode.allCases) { mode in
@@ -160,6 +169,13 @@ struct SettingsView: View {
                     configuration: $settings.sidebarHotKey
                 ) {
                     settings.resetSidebarHotKey()
+                }
+
+                SettingsShortcutRow(
+                    title: "切换笔记大纲",
+                    configuration: $settings.sidebarModeHotKey
+                ) {
+                    settings.resetSidebarModeHotKey()
                 }
 
                 SettingsShortcutRow(
