@@ -119,12 +119,26 @@ private struct IconButtonChrome<Label: View>: View {
 
     @ViewBuilder
     private var transparentBackground: some View {
-        FloatingChromeStyle.capsuleBackground(
-            visualTheme: .transparent,
-            colorScheme: colorScheme
+        let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+
+        TransparentLiquidBackground(
+            material: .popover,
+            tint: colorScheme == .light
+                ? Color.white.opacity(0.058)
+                : Color.black.opacity(0.110),
+            sheen: colorScheme == .light
+                ? Color.white.opacity(0.30)
+                : Color.white.opacity(0.080),
+            reflection: colorScheme == .light
+                ? MinNoteTheme.glassCoolHighlight.opacity(0.050)
+                : Color.white.opacity(0.018),
+            topGlow: colorScheme == .light
+                ? Color.white.opacity(0.20)
+                : Color.white.opacity(0.060)
         )
+        .clipShape(shape)
         .overlay {
-            Capsule()
+            shape
                 .stroke(
                     FloatingChromeStyle.borderColor(
                         visualTheme: .transparent,

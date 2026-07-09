@@ -273,6 +273,8 @@ struct NoteEditorView: View {
 
     @ViewBuilder
     private var toolbarChromeBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+
         if settings.visualTheme == .transparent {
             TransparentLiquidBackground(
                 material: .popover,
@@ -289,25 +291,42 @@ struct NoteEditorView: View {
                     ? Color.white.opacity(0.22)
                     : Color.white.opacity(0.065)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(shape)
+        } else if settings.visualTheme == .glass {
+            if #available(macOS 26.0, *) {
+                shape
+                    .fill(.clear)
+                    .glassEffect(.regular, in: shape)
+            } else {
+                shape
+                    .fill(.regularMaterial)
+            }
         } else if colorScheme == .light {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            shape
                 .fill(MinNoteTheme.pillSurface.opacity(0.95))
         } else {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            shape
                 .fill(.regularMaterial)
         }
     }
 
     private var chromeBorderColor: Color {
-        FloatingChromeStyle.borderColor(
+        guard settings.visualTheme != .glass else {
+            return .clear
+        }
+
+        return FloatingChromeStyle.borderColor(
             visualTheme: settings.visualTheme,
             colorScheme: colorScheme
         )
     }
 
     private var chromeShadowColor: Color {
-        FloatingChromeStyle.shadowColor(
+        guard settings.visualTheme != .glass else {
+            return .clear
+        }
+
+        return FloatingChromeStyle.shadowColor(
             visualTheme: settings.visualTheme,
             colorScheme: colorScheme
         )
